@@ -1,0 +1,597 @@
+% main.tex — Relatorio Projeto 2: Sensor Ultrasonico
+% Lab de Sistemas Embarcados (EA801) — FEEC/UNICAMP
+% Overleaf-ready: pdflatex ou lualatex
+
+\documentclass[12pt, a4paper]{article}
+
+% ── Pacotes ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+
+% ── Cores e estilo ───────────────────────────────────────
+\definecolor{codecomment}{rgb}{0.4,0.4,0.4}
+\definecolor{codestring}{rgb}{0.2,0.5,0.2}
+\definecolor{codekeyword}{rgb}{0.1,0.1,0.6}
+\definecolor{codebackground}{rgb}{0.97,0.97,0.97}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekeyword}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{codestring},
+  backgroundcolor=\color{codebackground},
+  frame=single,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  captionpos=b,
+  tabsize=4,
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!70!black,
+  citecolor=green!50!black,
+}
+
+% ── Cabecalho ────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small EA801 --- Lab de Sistemas Embarcados}
+\fancyhead[R]{\small FEEC/UNICAMP}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Dados do projeto ────────────────────────────────────
+\newcommand{\projetotitulo}{Projeto 2 --- Sensor Ultrassônico com Alerta WhatsApp}
+\newcommand{\disciplina}{EA801 --- Laboratório de Sistemas Embarcados}
+\newcommand{\instituicao}{Faculdade de Engenharia Elétrica e de Computação --- UNICAMP}
+
+% ═════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Capa ─────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\Large \textbf{\instituicao}}\\[0.5cm]
+  {\large \disciplina}\\[3cm]
+
+  {\LARGE \textbf{\projetotitulo}}\\[3cm]
+
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Integrante} & \textbf{RA} \\
+    \midrule
+    Caio Cezar Pagliarani & 248118 \\
+    Vitor Gonçalves Costa & 240043 \\
+    Lucas Bernardino de Oliveira & 182199 \\
+    \bottomrule
+  \end{tabular}
+
+  \vfill
+  {\large Campinas, 08 de abril de 2026}
+\end{titlepage}
+
+% ── Sumario ──────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 1: DEFINICAO DO PROBLEMA
+% ═════════════════════════════════════════════════════════
+\section{Definição do Problema}
+\label{sec:problema}
+
+\subsection{Contexto}
+
+Este projeto é a segunda etapa de uma sequência de três projetos na disciplina EA801, com complexidade incremental:
+
+\begin{enumerate}
+  \item \textbf{Projeto 1 --- BitTeclado}: teclado musical interativo (base)
+  \item \textbf{Projeto 2 --- Sensor Ultrassônico}: integração de sensor de distância com alertas remotos (este projeto)
+  \item \textbf{Projeto 3 --- Bengala Assistiva}: adaptação para auxílio a pessoas com deficiência visual
+\end{enumerate}
+
+\subsection{Problema}
+
+Monitorar a presença de objetos ou pessoas em uma zona de proximidade e notificar remotamente o usuário quando algo é detectado abaixo de uma distância crítica. O sistema deve fornecer feedback multissensorial (visual + sonoro) em tempo real e enviar alertas via WhatsApp.
+
+\subsection{Escopo}
+
+O sistema é um \textbf{monitor de proximidade embarcado} que:
+
+\begin{itemize}
+  \item Mede distância continuamente com sensor ultrassônico HC-SR04
+  \item Fornece feedback visual graduado (OLED + NeoPixel 5$\times$5 + LED RGB)
+  \item Fornece feedback sonoro proporcional à distância (buzzer, estilo sensor de ré)
+  \item Envia alerta via WhatsApp quando objeto entra na zona crítica ($<$20\,cm)
+  \item Conecta-se à internet via módulo ESP8266 (Wi-Fi)
+\end{itemize}
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 2: REQUISITOS
+% ═════════════════════════════════════════════════════════
+\section{Requisitos}
+\label{sec:requisitos}
+
+\subsection{Requisitos Funcionais}
+
+\begin{table}[H]
+\centering
+\caption{Requisitos funcionais do sistema.}
+\begin{tabular}{clp{8cm}}
+  \toprule
+  \textbf{RF} & \textbf{Descrição} & \textbf{Critério de Aceitação} \\
+  \midrule
+  RF01 & Medir distância & Leitura válida entre 2 e 400\,cm com resolução de 0,1\,cm \\
+  RF02 & Feedback sonoro & Beep com frequência proporcional à distância (contínuo $<$10\,cm, silêncio $>$100\,cm) \\
+  RF03 & Feedback visual (NeoPixel) & Barra de nível com cores por faixa de distância \\
+  RF04 & Feedback visual (LED RGB) & Cor muda conforme faixa: verde, amarelo, vermelho \\
+  RF05 & Display OLED & Exibe distância numérica, barra visual, status Wi-Fi e alerta \\
+  RF06 & Conexão Wi-Fi & Conecta via ESP8266 usando comandos AT pela UART \\
+  RF07 & Alerta WhatsApp & Envia mensagem via CallMeBot API quando distância $<$ 20\,cm \\
+  RF08 & Cooldown de alerta & Mínimo de 30\,s entre alertas consecutivos \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Requisitos Não-Funcionais}
+
+\begin{table}[H]
+\centering
+\caption{Requisitos não-funcionais do sistema.}
+\begin{tabular}{clp{8cm}}
+  \toprule
+  \textbf{RNF} & \textbf{Descrição} & \textbf{Critério} \\
+  \midrule
+  RNF01 & Tempo de resposta & Leitura + feedback em $<$50\,ms por ciclo \\
+  RNF02 & Plataforma & BitDogLab V7 (RP2040) com MicroPython \\
+  RNF03 & Consumo & Alimentação via USB (5\,V) \\
+  RNF04 & Modularidade & Código organizado em módulos independentes \\
+  RNF05 & Custo & Apenas componentes já disponíveis na BitDogLab + HC-SR04 + ESP8266 \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 3: CONCEITO PRELIMINAR
+% ═════════════════════════════════════════════════════════
+\section{Conceito Preliminar}
+\label{sec:conceito}
+
+\subsection{Abordagem de Design}
+
+O projeto adotou a abordagem de \textbf{refinamentos sucessivos} (prototipagem incremental):
+
+\begin{enumerate}
+  \item Primeiro, validar o sensor HC-SR04 isoladamente (\texttt{teste\_sensor.py})
+  \item Depois, estabelecer comunicação com o ESP8266 (\texttt{teste\_esp.py})
+  \item Em seguida, integrar feedback visual e sonoro
+  \item Por fim, adicionar o alerta WhatsApp via CallMeBot
+\end{enumerate}
+
+\subsection{Solução Proposta}
+
+O RP2040 (BitDogLab) atua como controlador central, lendo o sensor a cada 50\,ms e atualizando todos os periféricos de saída. A comunicação com a internet é delegada ao ESP8266 via UART, usando comandos AT para conexão Wi-Fi e requisições HTTP.
+
+O alerta WhatsApp utiliza a API gratuita \textbf{CallMeBot}, que permite enviar mensagens para WhatsApp via requisição HTTP GET simples.
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 4: CRONOGRAMA
+% ═════════════════════════════════════════════════════════
+\section{Cronograma}
+\label{sec:cronograma}
+
+Este projeto é uma continuação direta do Projeto~1 (BitTeclado, entregue em 22/03). A ideia do sensor ultrassônico já havia sido concebida durante o desenvolvimento do BitTeclado, conforme descrito na seção de trabalhos futuros daquele projeto. Isso permitiu iniciar a pesquisa e aquisição de componentes (HC-SR04 e ESP8266) em paralelo à finalização do Projeto~1.
+
+\subsection{Diagrama Gantt}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+              19/03  22/03  25/03  28/03  31/03  03/04  06/04  08/04
+              QUA    SAB    TER    SEX    SEG    QUI    DOM    TER
+--------------------------------------------------------------------
+Fase 0: Planejamento (overlap com P1)
+  Conceito + pesquisa ####|
+  Aquisicao HC-SR04        ##|
+  Aquisicao ESP8266        ##|
+
+Fase 1: Validacao de Componentes
+  teste_sensor.py              ####|
+  teste_esp.py (baudrate)      ########|  <- dificuldade
+  Montagem fisica sensor            ####|
+
+Fase 2: Firmware Individual
+  ultrasonico.py                     ####|
+  buzzer.py                          ####|
+  feedback.py (NeoPixel+RGB)              ####|
+  display.py                              ####|
+
+Fase 3: Wi-Fi e Integracao
+  wifi.py (AT commands)                    ############|  <- maior
+  Montagem ESP8266 (hardware)              ############|  <- dificuldade
+  Integracao CallMeBot                               ####|
+  main.py (loop completo)                             ####|
+
+Fase 4: Testes e Entrega
+  Testes integrados na placa                               ####|
+  Documentacao e relatorio                                 ########|
+--------------------------------------------------------------------
+\end{verbatim}
+\caption{Cronograma do Projeto 2 (19/03 a 08/04).}
+\end{figure}
+
+\subsection{Divisão de Tarefas por Integrante}
+
+\subsubsection*{Caio Cezar Pagliarani (248118) --- Arquitetura, Wi-Fi e Integração}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lllc}
+  \toprule
+  \textbf{Tarefa} & \textbf{Início} & \textbf{Fim} & \textbf{Status} \\
+  \midrule
+  Conceito do projeto e pesquisa de viabilidade & 19/03 & 22/03 & OK \\
+  Repositório GitHub e estrutura inicial & 22/03 & 22/03 & OK \\
+  Módulo \texttt{wifi.py} (AT com ESP8266) & 28/03 & 03/04 & OK \\
+  Integração \texttt{main.py} (loop principal) & 03/04 & 05/04 & OK \\
+  Testes integrados e debug de timing UART & 05/04 & 06/04 & OK \\
+  Relatório LaTeX e documentação final & 06/04 & 08/04 & OK \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Vitor Gonçalves Costa (240043) --- Hardware e Sensor}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lllc}
+  \toprule
+  \textbf{Tarefa} & \textbf{Início} & \textbf{Fim} & \textbf{Status} \\
+  \midrule
+  Aquisição e teste inicial do HC-SR04 & 22/03 & 25/03 & OK \\
+  Módulo \texttt{ultrasonico.py} (driver do sensor) & 25/03 & 26/03 & OK \\
+  Módulo \texttt{buzzer.py} (beep proporcional) & 26/03 & 28/03 & OK \\
+  Montagem física do ESP8266 & 28/03 & 03/04 & OK \\
+  Diagnóstico de mau contato e remontagem & 31/03 & 03/04 & OK \\
+  Documentação de hardware e pinout & 06/04 & 07/04 & OK \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Lucas Bernardino de Oliveira (182199) --- Display e Feedback Visual}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lllc}
+  \toprule
+  \textbf{Tarefa} & \textbf{Início} & \textbf{Fim} & \textbf{Status} \\
+  \midrule
+  Pesquisa NeoPixel e mapeamento da matriz 5$\times$5 & 22/03 & 25/03 & OK \\
+  Módulo \texttt{feedback.py} (NeoPixel + LED RGB) & 25/03 & 28/03 & OK \\
+  Módulo \texttt{display.py} (painel OLED) & 28/03 & 31/03 & OK \\
+  Script \texttt{teste\_esp.py} (varredura de baudrate) & 28/03 & 29/03 & OK \\
+  Testes unitários dos módulos visuais & 31/03 & 01/04 & OK \\
+  Apresentação e revisão final & 06/04 & 08/04 & OK \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Marcos (Milestones)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Data} & \textbf{Marco} & \textbf{Critério de Aceitação} \\
+  \midrule
+  22/03 & M0 --- Entrega P1 + início P2 & P1 entregue, repo P2 criado \\
+  25/03 & M1 --- Sensor validado & HC-SR04 medindo corretamente \\
+  28/03 & M2 --- Módulos individuais prontos & buzzer, display, feedback OK \\
+  03/04 & M3 --- Wi-Fi funcional & ESP8266 conectando e enviando HTTP \\
+  05/04 & M4 --- Integração completa & main.py com todos os módulos \\
+  08/04 & M5 --- Entrega final & Relatório + código + apresentação \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Dificuldades no Cronograma}
+
+A Fase~3 (Wi-Fi e Integração) consumiu significativamente mais tempo que o planejado, por três razões principais:
+
+\begin{enumerate}
+  \item \textbf{Mau contato nos jumpers do ESP8266}: a conexão física entre a BitDogLab e o módulo ESP-01 apresentou intermitência. Jumpers soltos e protoboard com contatos desgastados causaram falhas de comunicação UART que inicialmente foram confundidas com problemas de software.
+  \item \textbf{Baudrate e timing dos comandos AT}: foi necessário criar o script \texttt{teste\_esp.py} para varrer todos os baudrates possíveis. Mesmo após encontrar o baudrate correto (115200), os tempos de espera dos comandos AT precisaram de ajuste empírico.
+  \item \textbf{Erros humanos na montagem}: inversão de pinos TX/RX, alimentação incorreta (5\,V em vez de 3.3\,V no ESP8266), e fios conectados nos GPIOs errados atrasaram a validação por vários dias.
+\end{enumerate}
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 5: ARQUITETURA
+% ═════════════════════════════════════════════════════════
+\section{Arquitetura do Sistema}
+\label{sec:arquitetura}
+
+\subsection{Diagrama de Blocos}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+  +-------------+                    +--------------+
+  |  HC-SR04    |--GPIO8/9---------->|              |--GPIO21--> Buzzer PWM
+  |  (sensor)   |                    |              |
+  +-------------+                    |   RP2040     |
+                                     |  (BitDogLab) |--GPIO7---> NeoPixel 5x5
+  +-------------+                    |              |
+  |  ESP8266    |<-UART(GP0/1)------>|              |--GP13/11/12-> LED RGB
+  |  (Wi-Fi)    |                    |              |
+  +-------------+                    |              |--I2C(GP2/3)-> OLED SSD1306
+       |                             +--------------+
+       | HTTP
+       v
+  +-------------+
+  | CallMeBot   |
+  | (WhatsApp)  |
+  +-------------+
+\end{verbatim}
+\caption{Diagrama de blocos do sistema.}
+\label{fig:diagrama-texto}
+\end{figure}
+
+\subsection{Módulos de Software}
+
+O firmware é organizado em 6 módulos independentes:
+
+\begin{table}[H]
+\centering
+\caption{Módulos do firmware e suas responsabilidades.}
+\begin{tabular}{lp{9cm}}
+  \toprule
+  \textbf{Módulo} & \textbf{Responsabilidade} \\
+  \midrule
+  \texttt{main.py} & Loop principal: orquestra leitura, feedback e alertas \\
+  \texttt{ultrasonico.py} & Driver do HC-SR04: pulso trigger e medição do echo \\
+  \texttt{buzzer.py} & Controle PWM do buzzer com beep proporcional à distância \\
+  \texttt{display.py} & Painel OLED: distância, barra visual, status Wi-Fi/alerta \\
+  \texttt{feedback.py} & Controle dos NeoPixels 5$\times$5 e LED RGB por faixas de cor \\
+  \texttt{wifi.py} & Comunicação UART com ESP8266 (AT commands) + CallMeBot \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Fluxo de Execução}
+
+O loop principal executa a cada 50\,ms (\texttt{INTERVALO\_LEITURA\_MS}) na seguinte ordem:
+
+\begin{enumerate}
+  \item \textbf{Medir} distância via HC-SR04 (pulso de 10\,$\mu$s no trigger)
+  \item \textbf{Buzzer}: ajustar beep conforme distância
+  \item \textbf{NeoPixel + LED RGB}: atualizar cores e barra de nível
+  \item \textbf{Verificar alerta}: se distância $<$ 20\,cm e cooldown expirou, enviar WhatsApp
+  \item \textbf{OLED}: atualizar display com dados atuais
+\end{enumerate}
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 6: ESPECIFICACOES TECNICAS
+% ═════════════════════════════════════════════════════════
+\section{Especificações Técnicas}
+\label{sec:especificacoes}
+
+\subsection{Lista de Materiais (BOM)}
+
+\begin{table}[H]
+\centering
+\caption{Bill of Materials.}
+\begin{tabular}{llcl}
+  \toprule
+  \textbf{Componente} & \textbf{Modelo} & \textbf{Qtd} & \textbf{Observação} \\
+  \midrule
+  Placa de desenvolvimento & BitDogLab V7 (RP2040) & 1 & Inclui OLED, NeoPixel, RGB, buzzer \\
+  Sensor ultrassônico & HC-SR04 & 1 & Alcance 2--400\,cm \\
+  Módulo Wi-Fi & ESP8266 (ESP-01) & 1 & Firmware AT, 3.3\,V \\
+  Jumpers / fios & --- & $\sim$6 & Conexão sensor e ESP \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Mapeamento de Pinos}
+
+\begin{table}[H]
+\centering
+\caption{Mapeamento de GPIOs utilizados.}
+\begin{tabular}{llll}
+  \toprule
+  \textbf{Periférico} & \textbf{Pino} & \textbf{Direção} & \textbf{Interface} \\
+  \midrule
+  HC-SR04 Trigger & GPIO8 & Saída & Digital \\
+  HC-SR04 Echo    & GPIO9 & Entrada & Digital \\
+  Buzzer          & GPIO21 & Saída & PWM \\
+  NeoPixel 5$\times$5 & GPIO7 & Saída & WS2812 \\
+  LED Vermelho    & GPIO13 & Saída & PWM \\
+  LED Verde       & GPIO11 & Saída & PWM \\
+  LED Azul        & GPIO12 & Saída & PWM \\
+  OLED SDA        & GPIO2 & Bidirecional & I$^2$C \\
+  OLED SCL        & GPIO3 & Saída & I$^2$C \\
+  ESP8266 TX      & GPIO0 & Saída & UART0 \\
+  ESP8266 RX      & GPIO1 & Entrada & UART0 \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Princípio de Funcionamento do HC-SR04}
+
+O sensor ultrassônico opera por tempo de voo (\textit{time-of-flight}):
+
+\begin{enumerate}
+  \item O microcontrolador envia um pulso HIGH de 10\,$\mu$s no pino Trigger
+  \item O sensor emite 8 pulsos ultrassônicos a 40\,kHz
+  \item O pino Echo fica HIGH pelo tempo que o som leva para ir e voltar
+  \item A distância é calculada por:
+\end{enumerate}
+
+\begin{equation}
+  d = \frac{t_{\text{echo}}}{2} \times v_{\text{som}} = \frac{t_{\text{echo}} \; [\mu s]}{2 \times 29{,}15} \; [\text{cm}]
+\end{equation}
+
+onde $v_{\text{som}} \approx 343$\,m/s $= 29{,}15$\,$\mu$s/cm.
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 7: PROTOTIPAGEM E TESTES
+% ═════════════════════════════════════════════════════════
+\section{Prototipagem e Testes}
+\label{sec:prototipagem}
+
+\subsection{Teste 1: Sensor HC-SR04}
+
+O primeiro teste validou a leitura do sensor isoladamente, usando o script \texttt{teste\_sensor.py}:
+
+\begin{lstlisting}[caption={Trecho do teste standalone do HC-SR04.}]
+trig = Pin(8, Pin.OUT)
+echo = Pin(9, Pin.IN)
+
+# Pulso de trigger: 10us HIGH
+trig.value(1)
+time.sleep_us(10)
+trig.value(0)
+
+# Medir duracao do echo (timeout 30ms)
+duracao = time_pulse_us(echo, 1, 30000)
+dist = (duracao / 2.0) / 29.15
+print("Distancia: {:.1f} cm".format(dist))
+\end{lstlisting}
+
+\subsection{Teste 2: Comunicação ESP8266}
+
+O script \texttt{teste\_esp.py} testou a comunicação UART com o ESP8266 varrendo múltiplos baudrates (9600, 19200, 38400, 57600, 115200, 74880) até encontrar resposta ``OK'' ao comando AT.
+
+O baudrate correto encontrado foi \textbf{115200\,bps}.
+
+\subsection{Teste 3: Integração Completa}
+
+\begin{itemize}
+  \item \textbf{Feedback sonoro}: validado nas 4 faixas de distância (contínuo, 100\,ms, 300\,ms, 600\,ms)
+  \item \textbf{NeoPixel}: barra de nível funcionando com cores corretas por faixa
+  \item \textbf{LED RGB}: transição de cores conforme proximidade
+  \item \textbf{OLED}: atualização sem flickering (cache de estado anterior)
+  \item \textbf{WhatsApp}: mensagem recebida em $\sim$3--5\,s após detecção
+\end{itemize}
+
+
+% ═════════════════════════════════════════════════════════
+% ETAPA 8: VALIDACAO
+% ═════════════════════════════════════════════════════════
+\section{Validação}
+\label{sec:validacao}
+
+\subsection{Checklist de Requisitos}
+
+\begin{table}[H]
+\centering
+\caption{Validação dos requisitos funcionais.}
+\begin{tabular}{clc}
+  \toprule
+  \textbf{Req.} & \textbf{Descrição} & \textbf{Atendido?} \\
+  \midrule
+  RF01 & Medição de distância 2--400\,cm & Sim \\
+  RF02 & Beep proporcional à distância & Sim \\
+  RF03 & Barra NeoPixel por faixa de cor & Sim \\
+  RF04 & LED RGB por faixa de distância & Sim \\
+  RF05 & Display OLED com info completa & Sim \\
+  RF06 & Conexão Wi-Fi via ESP8266 & Sim \\
+  RF07 & Alerta WhatsApp via CallMeBot & Sim \\
+  RF08 & Cooldown de 30\,s entre alertas & Sim \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+
+% ═════════════════════════════════════════════════════════
+% CONCLUSAO
+% ═════════════════════════════════════════════════════════
+\section{Conclusão}
+\label{sec:conclusao}
+
+O Projeto~2 representou um salto de complexidade em relação ao BitTeclado (Projeto~1), passando de um sistema puramente local para uma aplicação conectada à internet com comunicação entre dois microcontroladores (RP2040 e ESP8266). O resultado final é um monitor de proximidade embarcado funcional, capaz de medir distância em tempo real, fornecer feedback multissensorial e enviar alertas remotos via WhatsApp.
+
+\subsection{Principais Resultados}
+
+\begin{itemize}
+  \item Sistema de medição de distância funcional com 4 faixas de feedback sonoro (estilo sensor de ré) e visual (barra de nível NeoPixel + LED RGB com código de cores)
+  \item Comunicação Wi-Fi operacional via ESP8266 com comandos AT, incluindo requisições HTTP para a API CallMeBot
+  \item Alerta WhatsApp recebido em 3--5\,s após detecção de objeto na zona crítica ($<$20\,cm), com cooldown de 30\,s para evitar spam
+  \item Arquitetura modular com 6 módulos independentes, reaproveitando padrões do Projeto~1 (buzzer, display OLED)
+  \item Display OLED com atualização otimizada por cache de estado, eliminando flickering
+\end{itemize}
+
+\subsection{Dificuldades Encontradas}
+
+A principal fonte de dificuldades foi a integração do módulo ESP8266, em três dimensões:
+
+\begin{enumerate}
+  \item \textbf{Hardware --- mau contato}: a conexão entre BitDogLab e ESP-01 via protoboard e jumpers apresentou intermitência frequente. Contatos desgastados na protoboard e jumpers soltos causaram falhas de comunicação UART que, inicialmente, foram diagnosticadas erroneamente como bugs de software. A solução envolveu refazer a montagem múltiplas vezes, trocar jumpers e verificar continuidade com multímetro.
+
+  \item \textbf{Hardware --- erros humanos}: durante a montagem, ocorreram inversões de pinos TX/RX e, em uma ocasião, alimentação de 5\,V aplicada diretamente ao ESP8266 (que opera a 3.3\,V). Esses erros atrasaram a validação e exigiram cuidado redobrado na verificação do circuito antes de cada teste.
+
+  \item \textbf{Software --- comandos AT}: a comunicação UART com o ESP8266 exigiu ajuste empírico de tempos de espera (\textit{timeouts}) para cada comando AT. O comando \texttt{AT+CWJAP} (conexão Wi-Fi) precisou de até 10\,s de espera, enquanto o envio HTTP (\texttt{AT+CIPSEND}) demandou pausas intermediárias de 500\,ms para sincronização. Foi criado o script \texttt{teste\_esp.py} com varredura automática de baudrates para diagnosticar problemas de comunicação.
+
+  \item \textbf{Dashboard descontinuado}: uma tentativa de criar um dashboard em tempo real (Flask + Chart.js no PC) foi abandonada por instabilidade na comunicação HTTP entre o ESP8266 e o servidor local, além de complexidade excessiva para o escopo do projeto.
+\end{enumerate}
+
+\subsection{Lições Aprendidas}
+
+\begin{itemize}
+  \item \textbf{Testar hardware antes de software}: quando a comunicação falha, verificar sempre a camada física primeiro (jumpers, alimentação, pinout) antes de depurar código.
+  \item \textbf{Scripts de diagnóstico são essenciais}: o \texttt{teste\_sensor.py} e o \texttt{teste\_esp.py} economizaram tempo ao isolar problemas de componentes individuais.
+  \item \textbf{Modularidade facilita debug}: como cada módulo (sensor, buzzer, display, Wi-Fi) era independente, foi possível testar e validar cada um isoladamente antes da integração.
+  \item \textbf{Reusar código entre projetos}: padrões do Projeto~1 (estrutura do buzzer, display OLED) foram adaptados diretamente, acelerando o desenvolvimento.
+\end{itemize}
+
+\subsection{Trabalhos Futuros}
+
+\begin{itemize}
+  \item \textbf{Projeto 3 --- Bengala assistiva}: adaptação do sistema de medição ultrassônica e feedback sonoro para uma bengala eletrônica destinada a pessoas com deficiência visual, conforme planejado desde a concepção do Projeto~1.
+  \item Substituição do ESP-01 por ESP32 integrado para eliminar problemas de comunicação UART e simplificar a montagem.
+  \item Implementação de filtro de média móvel nas leituras do HC-SR04 para reduzir ruído em ambientes com superfícies irregulares.
+\end{itemize}
+
+
+% ═════════════════════════════════════════════════════════
+% REFERENCIAS
+% ═════════════════════════════════════════════════════════
+\section*{Referências}
+\addcontentsline{toc}{section}{Referências}
+
+\begin{enumerate}[label={[\arabic*]}]
+  \item ARES, V. E. \textit{Metodologia Projeto v5}. FEEC/UNICAMP, 2024.
+  \item CUGNASCA, C. E. \textit{Projeto de Sistemas Embarcados}. Escola Politécnica, USP, 2018.
+  \item Elecfreaks. \textit{HC-SR04 Ultrasonic Sensor Datasheet}. Disponível em: \url{https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf}
+  \item Espressif Systems. \textit{ESP8266 AT Instruction Set}. Disponível em: \url{https://www.espressif.com/sites/default/files/documentation/4a-esp8266_at_instruction_set_en.pdf}
+  \item CallMeBot. \textit{WhatsApp API Documentation}. Disponível em: \url{https://www.callmebot.com/blog/free-api-whatsapp-messages/}
+\end{enumerate}
+
+\end{document}
