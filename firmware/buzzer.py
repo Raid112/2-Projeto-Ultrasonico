@@ -11,6 +11,13 @@ class Buzzer:
         self.pwm = PWM(Pin(pin))
         self.pwm.duty_u16(0)
         self._ultimo_beep = 0
+        self.mute = False
+
+    def toggle_mute(self):
+        self.mute = not self.mute
+        if self.mute:
+            self.parar()
+        return self.mute
 
     def beep_proximidade(self, distancia_cm, tempo_ms):
         """Controla frequencia de beeps baseado na distancia.
@@ -26,7 +33,7 @@ class Buzzer:
             distancia_cm: distancia medida
             tempo_ms: timestamp atual (time.ticks_ms)
         """
-        if distancia_cm < 0 or distancia_cm > 100:
+        if self.mute or distancia_cm < 0 or distancia_cm > 100:
             self.parar()
             return
 
@@ -65,6 +72,8 @@ class Buzzer:
 
     def beep_curto(self, freq=1000, duracao_ms=100):
         """Beep unico para feedback."""
+        if self.mute:
+            return
         self._tocar(freq)
         time.sleep_ms(duracao_ms)
         self.parar()

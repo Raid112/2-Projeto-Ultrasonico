@@ -9,6 +9,7 @@
 #   - Alerta WhatsApp via CallMeBot quando objeto < DISTANCIA_ALERTA_CM
 
 import time
+from machine import Pin
 from ultrasonico import Ultrasonico
 from wifi import WiFi
 from buzzer import Buzzer
@@ -27,6 +28,9 @@ wifi = WiFi()
 bz = Buzzer()
 fb = Feedback()
 disp = Display()
+
+btn_c = Pin(10, Pin.IN, Pin.PULL_UP)  # botao verde C: toggle mute do buzzer
+_btn_c_anterior = 1
 
 # Tela de boas-vindas
 disp.mostrar_inicio()
@@ -56,6 +60,12 @@ alerta_flag = False  # flag visual temporaria
 # Loop principal
 while True:
     agora = time.ticks_ms()
+
+    # 0. Botao C: toggle mute do buzzer (borda de descida)
+    btn_c_atual = btn_c.value()
+    if _btn_c_anterior == 1 and btn_c_atual == 0:
+        bz.toggle_mute()
+    _btn_c_anterior = btn_c_atual
 
     # 1. Medir distancia
     dist = sensor.medir_cm()

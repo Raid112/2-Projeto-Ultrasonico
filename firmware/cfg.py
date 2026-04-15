@@ -4,7 +4,7 @@
 # IMPORTANTE: Edite os valores abaixo antes de usar!
 
 # Wi-Fi
-WIFI_SSID = "Caio-Rede‐--------------------"
+WIFI_SSID = "Caio-Rede"
 WIFI_SENHA = "87654321"
 
 # CallMeBot WhatsApp
@@ -16,8 +16,8 @@ TELEFONE = "5519971600151"
 APIKEY = "9984181"
 
 # Sensor
-DISTANCIA_ALERTA_CM = 20     # distancia que dispara o alerta WhatsApp
-COOLDOWN_ALERTA_SEG = 30     # tempo minimo entre alertas (evitar spam)
+DISTANCIA_ALERTA_CM = 1      # distancia que dispara o alerta WhatsApp
+COOLDOWN_ALERTA_SEG = 10     # tempo minimo entre alertas (CallMeBot rate-limita ~1 msg / 10s)
 
 # Loop principal
 INTERVALO_LEITURA_MS = 50    # intervalo entre leituras do sensor

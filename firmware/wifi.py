@@ -7,18 +7,22 @@ import time
 
 
 class WiFi:
-    def __init__(self, uart_id=0, tx_pin=0, rx_pin=1, baudrate=115200):
+    def __init__(self, uart_id=0, tx_pin=0, rx_pin=1, baudrate=19200):
         self.uart = UART(uart_id, baudrate=baudrate,
                          tx=Pin(tx_pin), rx=Pin(rx_pin))
         self._conectado = False
 
     def _enviar_at(self, cmd, espera_ms=2000):
-        """Envia comando AT e retorna resposta como string."""
-        self.uart.write(cmd + "\r\n")
-        time.sleep_ms(espera_ms)
-        resp = b""
+        """Envia comando AT e le resposta incrementalmente ate o timeout."""
         while self.uart.any():
-            resp += self.uart.read()
+            self.uart.read()
+        self.uart.write(cmd + "\r\n")
+        t0 = time.ticks_ms()
+        resp = b""
+        while time.ticks_diff(time.ticks_ms(), t0) < espera_ms:
+            if self.uart.any():
+                resp += self.uart.read()
+            time.sleep_ms(50)
         return resp.decode("utf-8", "ignore")
 
     def iniciar(self):
@@ -41,9 +45,9 @@ class WiFi:
 
         # Conectar
         cmd = 'AT+CWJAP="{}","{}"'.format(ssid, senha)
-        resp = self._enviar_at(cmd, 10000)
+        resp = self._enviar_at(cmd, 15000)
 
-        if "OK" in resp or "WIFI CONNECTED" in resp:
+        if "OK" in resp or "WIFI GOT IP" in resp:
             self._conectado = True
             return True
 
