@@ -17,7 +17,7 @@ LED_MATRIX = [
 
 
 class Feedback:
-    def __init__(self):
+    def __init__(self, dist_max=30, dist_alerta=5):
         # NeoPixel 5x5
         self.np = neopixel.NeoPixel(Pin(7), 25)
 
@@ -27,28 +27,32 @@ class Feedback:
         self.led_b = PWM(Pin(12)); self.led_b.freq(1000)
 
         self._estado_anterior = -1
+        self.dist_max = dist_max
+        self.dist_alerta = dist_alerta
 
     def atualizar(self, distancia_cm):
-        """Atualiza NeoPixels e LED RGB conforme distancia.
+        """Faixas escaladas por dist_max / dist_alerta.
 
-        Faixas:
-        - > 100cm: tudo apagado (sem objeto)
-        - 60-100cm: verde (longe, seguro)
-        - 30-60cm: amarelo (atencao)
-        - 10-30cm: vermelho (proximo)
-        - < 10cm: vermelho piscante (muito proximo / alerta)
-        - erro (-1): azul (sem leitura)
+        d < 0                    : azul (sem leitura)
+        d < dist_alerta          : vermelho piscante (critico)
+        dist_alerta .. 1/3 max   : vermelho
+        1/3 max   .. 2/3 max     : amarelo
+        2/3 max   .. dist_max    : verde
+        d > dist_max             : apagado
         """
-        # Determinar faixa para evitar redesenho desnecessario
+        faixa_total = self.dist_max - self.dist_alerta
+        t1 = self.dist_alerta + faixa_total / 3
+        t2 = self.dist_alerta + 2 * faixa_total / 3
+
         if distancia_cm < 0:
             faixa = -1
-        elif distancia_cm < 10:
+        elif distancia_cm < self.dist_alerta:
             faixa = 0
-        elif distancia_cm < 30:
+        elif distancia_cm < t1:
             faixa = 1
-        elif distancia_cm < 60:
+        elif distancia_cm < t2:
             faixa = 2
-        elif distancia_cm <= 100:
+        elif distancia_cm <= self.dist_max:
             faixa = 3
         else:
             faixa = 4

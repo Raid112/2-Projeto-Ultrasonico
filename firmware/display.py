@@ -7,8 +7,9 @@ from ssd1306 import SSD1306_I2C
 
 
 class Display:
-    def __init__(self):
-        i2c = SoftI2C(scl=Pin(3), sda=Pin(2))
+    def __init__(self, i2c=None):
+        if i2c is None:
+            i2c = SoftI2C(scl=Pin(3), sda=Pin(2))
         self.oled = SSD1306_I2C(128, 64, i2c)
         self._estado_anterior = None
 
@@ -68,4 +69,14 @@ class Display:
         self.oled.fill(0)
         self.oled.text("Conectando...", 8, 16)
         self.oled.text(status, 0, 36)
+        self.oled.show()
+
+    def mostrar_debug(self, mag_atual, mag_min, mag_max, freefalls, estado):
+        """Tela de debug do IMU: magnitude de accel + contadores."""
+        self.oled.fill(0)
+        self.oled.text("IMU DEBUG", 28, 0)
+        self.oled.text("mag {:>5.2f} g".format(mag_atual), 0, 14)
+        self.oled.text("min {:>5.2f}".format(mag_min), 0, 26)
+        self.oled.text("max {:>5.2f}".format(mag_max), 0, 38)
+        self.oled.text("ff {}  {}".format(freefalls, estado[:6]), 0, 52)
         self.oled.show()

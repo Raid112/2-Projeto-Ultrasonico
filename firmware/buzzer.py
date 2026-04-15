@@ -7,11 +7,13 @@ import time
 
 
 class Buzzer:
-    def __init__(self, pin=21):
+    def __init__(self, pin=21, dist_max=30, dist_alerta=5):
         self.pwm = PWM(Pin(pin))
         self.pwm.duty_u16(0)
         self._ultimo_beep = 0
         self.mute = False
+        self.dist_max = dist_max
+        self.dist_alerta = dist_alerta
 
     def toggle_mute(self):
         self.mute = not self.mute
@@ -20,33 +22,30 @@ class Buzzer:
         return self.mute
 
     def beep_proximidade(self, distancia_cm, tempo_ms):
-        """Controla frequencia de beeps baseado na distancia.
+        """Beep escalado por dist_max / dist_alerta (sensor de re).
 
-        Quanto mais perto, mais rapido o beep (estilo sensor de re).
-        < 10cm:  beep continuo
-        10-30cm: beep a cada 100ms
-        30-60cm: beep a cada 300ms
-        60-100cm: beep a cada 600ms
-        > 100cm: silencio
-
-        Args:
-            distancia_cm: distancia medida
-            tempo_ms: timestamp atual (time.ticks_ms)
+        d < dist_alerta          : beep continuo agudo
+        dist_alerta .. 1/3 max   : beep rapido
+        1/3 max   .. 2/3 max     : beep medio
+        2/3 max   .. dist_max    : beep lento
+        d > dist_max             : silencio
         """
-        if self.mute or distancia_cm < 0 or distancia_cm > 100:
+        if self.mute or distancia_cm < 0 or distancia_cm > self.dist_max:
             self.parar()
             return
 
-        if distancia_cm < 10:
-            # Beep continuo — tom agudo
+        if distancia_cm < self.dist_alerta:
             self._tocar(2000)
             return
 
-        # Definir intervalo do beep
-        if distancia_cm < 30:
+        faixa = self.dist_max - self.dist_alerta
+        t1 = self.dist_alerta + faixa / 3
+        t2 = self.dist_alerta + 2 * faixa / 3
+
+        if distancia_cm < t1:
             intervalo = 100
             freq = 1500
-        elif distancia_cm < 60:
+        elif distancia_cm < t2:
             intervalo = 300
             freq = 1000
         else:
