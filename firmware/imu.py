@@ -71,26 +71,11 @@ class IMU:
         if self._estado == "normal":
             if mag < self.freefall_g:
                 self._estado = "freefall"
-                self._t_freefall_inicio = agora_ms
-            return False
+                self.freefalls_detectados += 1
+                return True  # QUEDA CONFIRMADA imediatamente
 
         if self._estado == "freefall":
             if mag >= self.freefall_g:
-                dur = time.ticks_diff(agora_ms, self._t_freefall_inicio)
-                if dur >= self.freefall_min_ms:
-                    self._estado = "aguardando_impacto"
-                    self._t_freefall_fim = agora_ms
-                    self.freefalls_detectados += 1
-                else:
-                    self._estado = "normal"  # freefall muito curto, ignora
-            return False
-
-        if self._estado == "aguardando_impacto":
-            if mag >= self.impact_g:
                 self._estado = "normal"
-                return True  # QUEDA CONFIRMADA
-            if time.ticks_diff(agora_ms, self._t_freefall_fim) > self.impact_janela_ms:
-                self._estado = "normal"  # tempo esgotou sem impacto
-            return False
 
         return False

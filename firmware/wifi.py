@@ -26,9 +26,13 @@ class WiFi:
         return resp.decode("utf-8", "ignore")
 
     def iniciar(self):
-        """Testa comunicacao com ESP8266."""
-        resp = self._enviar_at("AT", 1000)
-        return "OK" in resp
+        """Testa comunicacao com ESP8266. Tenta 5x com pausa (ESP-01 antigo demora pra acordar)."""
+        for _ in range(5):
+            resp = self._enviar_at("AT", 1500)
+            if "OK" in resp:
+                return True
+            time.sleep_ms(500)
+        return False
 
     def conectar(self, ssid, senha):
         """Conecta ao Wi-Fi.
@@ -40,8 +44,9 @@ class WiFi:
         Returns:
             True se conectou com sucesso.
         """
-        # Modo station
+        # Modo station + single connection
         self._enviar_at("AT+CWMODE=1", 1000)
+        self._enviar_at("AT+CIPMUX=0", 1000)
 
         # Conectar
         cmd = 'AT+CWJAP="{}","{}"'.format(ssid, senha)
@@ -80,7 +85,7 @@ class WiFi:
             return False
 
         # Montar requisicao HTTP GET
-        http_req = "GET {} HTTP/1.1\r\nHost: {}\r\n\r\n".format(path, host)
+        http_req = "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n".format(path, host)
 
         # Enviar dados
         cmd_send = "AT+CIPSEND={}".format(len(http_req))

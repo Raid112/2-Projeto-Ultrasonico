@@ -27,10 +27,10 @@ JANELA_MEDIA_MS = 3000       # janela de tempo para media da distancia
 
 # Deteccao de queda (MPU6050)
 # Algoritmo: queda livre (accel baixo) seguida de impacto (accel alto) dentro de uma janela.
-FREEFALL_G = 0.5             # magnitude de accel abaixo disso = queda livre
-FREEFALL_MIN_MS = 80         # tempo minimo em queda livre para considerar
-IMPACT_G = 2.2               # magnitude de accel acima disso = impacto
-IMPACT_JANELA_MS = 1000      # janela depois da queda livre em que esperamos o impacto
+FREEFALL_G = 0.8             # magnitude de accel abaixo disso = queda livre
+FREEFALL_MIN_MS = 0          # sem criterio de tempo minimo
+IMPACT_G = 99.0              # sem criterio de impacto (nao usado)
+IMPACT_JANELA_MS = 1000      # nao usado
 
 # Modo debug: substitui OLED por tela com magnitude/min/max/freefalls
 # para calibrar thresholds de queda. Nao usa WhatsApp.
