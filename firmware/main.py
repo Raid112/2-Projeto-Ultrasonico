@@ -44,8 +44,8 @@ time.sleep_ms(1500)
 
 disp.mostrar_wifi("Buscando ESP...")
 if not wifi.iniciar():
-    disp.mostrar_wifi("ESP nao encontrado")
-    time.sleep_ms(2000)
+    disp.mostrar_erro("ESP nao responde", "Checar cabos", "TX/RX GP0-GP1")
+    time.sleep_ms(3000)
 else:
     disp.mostrar_wifi("Conectando WiFi...")
     if wifi.conectar(WIFI_SSID, WIFI_SENHA):
@@ -54,8 +54,8 @@ else:
         time.sleep_ms(500)
         bz.beep_curto(2000, 100)
     else:
-        disp.mostrar_wifi("Falha no WiFi")
-    time.sleep_ms(1500)
+        disp.mostrar_erro("Falha no WiFi", WIFI_SSID, "Checar roteador")
+    time.sleep_ms(3000)
 
 ultimo_alerta = 0
 alerta_flag = False

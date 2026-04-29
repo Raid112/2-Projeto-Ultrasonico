@@ -71,6 +71,18 @@ class Display:
         self.oled.text(status, 0, 36)
         self.oled.show()
 
+    def mostrar_erro(self, titulo, linha1="", linha2=""):
+        """Tela de erro com titulo e duas linhas de detalhe."""
+        self.oled.fill(0)
+        self.oled.text("!! ERRO !!", 24, 0)
+        self.oled.hline(0, 10, 128, 1)
+        self.oled.text(titulo[:16], 0, 18)
+        if linha1:
+            self.oled.text(linha1[:16], 0, 34)
+        if linha2:
+            self.oled.text(linha2[:16], 0, 50)
+        self.oled.show()
+
     def mostrar_debug(self, mag_atual, mag_min, mag_max, freefalls, estado):
         """Tela de debug do IMU: magnitude de accel + contadores."""
         self.oled.fill(0)
