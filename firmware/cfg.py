@@ -4,8 +4,8 @@
 # IMPORTANTE: Edite os valores abaixo antes de usar!
 
 # Wi-Fi
-WIFI_SSID = "Caio-Rede"
-WIFI_SENHA = "87654321"
+WIFI_SSID = "BitDog"
+WIFI_SENHA = "12345678"
 
 # CallMeBot WhatsApp
 # Para obter a apikey:

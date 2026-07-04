@@ -12,8 +12,10 @@ class WiFi:
                          tx=Pin(tx_pin), rx=Pin(rx_pin))
         self._conectado = False
 
-    def _enviar_at(self, cmd, espera_ms=2000):
-        """Envia comando AT e le resposta incrementalmente ate o timeout."""
+    def _enviar_at(self, cmd, espera_ms=2000, ate=("OK", "ERROR")):
+        """Envia comando AT e le a resposta. Sai assim que ve um dos tokens
+        em `ate` (ex.: 'OK', 'ERROR', '>', '+IPD') em vez de esperar o timeout
+        inteiro -> muito mais rapido no caminho feliz. `espera_ms` vira teto."""
         while self.uart.any():
             self.uart.read()
         self.uart.write(cmd + "\r\n")
@@ -22,7 +24,12 @@ class WiFi:
         while time.ticks_diff(time.ticks_ms(), t0) < espera_ms:
             if self.uart.any():
                 resp += self.uart.read()
-            time.sleep_ms(50)
+                if ate:
+                    txt = resp.decode("utf-8", "ignore")
+                    if any(tok in txt for tok in ate):
+                        break
+            else:
+                time.sleep_ms(10)
         return resp.decode("utf-8", "ignore")
 
     def iniciar(self):
@@ -78,25 +85,28 @@ class WiFi:
             telefone, msg_encoded, apikey
         )
 
-        # Iniciar conexao TCP
+        # Iniciar conexao TCP (sai assim que conecta)
         cmd_conn = 'AT+CIPSTART="TCP","{}",80'.format(host)
-        resp = self._enviar_at(cmd_conn, 5000)
+        resp = self._enviar_at(cmd_conn, 5000, ate=("CONNECT", "OK", "ERROR"))
         if "ERROR" in resp and "ALREADY" not in resp:
             return False
 
         # Montar requisicao HTTP GET
         http_req = "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n".format(path, host)
 
-        # Enviar dados
+        # Pedir janela de envio e mandar o payload assim que ver o '>'
         cmd_send = "AT+CIPSEND={}".format(len(http_req))
-        self._enviar_at(cmd_send, 1000)
-        time.sleep_ms(500)
+        self._enviar_at(cmd_send, 1000, ate=(">",))
 
-        resp = self._enviar_at(http_req, 5000)
+        # Le a resposta e retorna assim que a conexao fecha / chega o corpo
+        resp = self._enviar_at(http_req, 8000, ate=("CLOSED", "+IPD", "SEND FAIL"))
 
-        # Fechar conexao
-        self._enviar_at("AT+CIPCLOSE", 1000)
+        # Fechar conexao (best-effort)
+        self._enviar_at("AT+CIPCLOSE", 800)
 
+        # 209 = rate-limit da CallMeBot -> NAO conta como enviado
+        if "209" in resp:
+            return False
         return "SEND OK" in resp or "+IPD" in resp
 
     @property
