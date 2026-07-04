@@ -17,9 +17,16 @@ LED_MATRIX = [
 
 
 class Feedback:
-    def __init__(self, dist_max=30, dist_alerta=5):
+    def __init__(self, dist_max=30, dist_alerta=5, usar_matriz=True):
+        self.usar_matriz = usar_matriz
+
         # NeoPixel 5x5
         self.np = neopixel.NeoPixel(Pin(7), 25)
+        if not usar_matriz:
+            # apaga a matriz uma vez e nunca mais escreve nela
+            for i in range(25):
+                self.np[i] = (0, 0, 0)
+            self.np.write()
 
         # LED RGB (PWM)
         self.led_r = PWM(Pin(13)); self.led_r.freq(1000)
@@ -94,6 +101,8 @@ class Feedback:
 
     def _preencher_np(self, cor):
         """Preenche toda a matriz com uma cor (r, g, b)."""
+        if not self.usar_matriz:
+            return
         for i in range(25):
             self.np[i] = cor
         self.np.write()
@@ -105,6 +114,8 @@ class Feedback:
             linhas: quantas linhas acender (1-5)
             cor: tupla (r, g, b)
         """
+        if not self.usar_matriz:
+            return
         for i in range(25):
             self.np[i] = (0, 0, 0)
 

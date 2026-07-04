@@ -23,7 +23,13 @@ DISTANCIA_MAX_CM = 30        # distancia maxima considerada (acima disso = sem o
 DISTANCIA_ALERTA_CM = 5      # distancia critica (so afeta o buzzer)
 
 COOLDOWN_ALERTA_SEG = 10     # tempo minimo entre alertas WhatsApp (CallMeBot ~1 msg / 10s)
-JANELA_MEDIA_MS = 300        # janela de tempo para media da distancia (menor = mais responsivo)
+
+# Filtro de distancia: mediana movel das ultimas N amostras. Atualiza a cada
+# loop (sem o lag de uma janela de tempo) mas ainda rejeita spikes do HC-SR04.
+MEDIANA_N = 3
+# Timeout do echo do HC-SR04 (us). Menor = menos bloqueio quando nao ha objeto.
+# ~18000us ~= 300cm de alcance maximo de deteccao.
+ECHO_TIMEOUT_US = 18000
 
 # Deteccao de queda (MPU6050)
 # Algoritmo: queda livre (accel baixo) seguida de impacto (accel alto) dentro de uma janela.
@@ -34,8 +40,14 @@ IMPACT_JANELA_MS = 1000      # nao usado
 
 # Modo debug: substitui OLED por tela com magnitude/min/max/freefalls
 # para calibrar thresholds de queda. Nao usa WhatsApp.
-MODO_DEBUG = True
+MODO_DEBUG = False
 DEBUG_RESET_MIN_MAX_SEG = 10   # periodicamente reseta min/max para ver janelas recentes
 
 # Loop principal
-INTERVALO_LEITURA_MS = 50    # intervalo entre leituras do sensor
+# 0 = sem pausa extra (loop o mais rapido possivel). Na pratica o proprio
+# HC-SR04 ja bloqueia ~5-18ms por medicao (tempo do echo), que e' o piso
+# natural do loop -> nao gira infinito nem trava.
+INTERVALO_LEITURA_MS = 0
+# OLED via SoftI2C custa ~113ms por redesenho; atualiza no maximo a cada
+# DISPLAY_INTERVALO_MS pra nao travar o loop de controle (buzzer/vibra/sensor).
+DISPLAY_INTERVALO_MS = 250

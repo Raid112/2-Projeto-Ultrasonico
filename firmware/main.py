@@ -21,19 +21,36 @@ from cfg import (
     WIFI_SSID, WIFI_SENHA,
     TELEFONE, APIKEY,
     DISTANCIA_MAX_CM, DISTANCIA_ALERTA_CM, COOLDOWN_ALERTA_SEG,
-    INTERVALO_LEITURA_MS, JANELA_MEDIA_MS,
+    INTERVALO_LEITURA_MS, MEDIANA_N, ECHO_TIMEOUT_US, DISPLAY_INTERVALO_MS,
     FREEFALL_G, FREEFALL_MIN_MS, IMPACT_G, IMPACT_JANELA_MS,
     MODO_DEBUG, DEBUG_RESET_MIN_MAX_SEG,
 )
 
+# ===== Toggle de perifericos (hardcoded) =====
+# OLED: False = nao usa o display. Loop mais rapido (sem o ~113ms do SoftI2C
+# por redesenho). Buzzer, vibra, LED e WhatsApp continuam normais.
+USAR_OLED = False
+# Matriz NeoPixel 5x5: False = apaga e nao escreve nela. O LED RGB continua.
+USAR_MATRIZ = False
+
 i2c_bus = SoftI2C(scl=Pin(3), sda=Pin(2), freq=100000)
 
-sensor = Ultrasonico()
+sensor = Ultrasonico(echo_timeout_us=ECHO_TIMEOUT_US)
 wifi = WiFi()
 bz = Buzzer(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
 vb = Vibra(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
-fb = Feedback(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
-disp = Display(i2c=i2c_bus)
+fb = Feedback(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM,
+              usar_matriz=USAR_MATRIZ)
+class _DisplayNulo:
+    """Stub usado quando USAR_OLED=False: todos os metodos viram no-op."""
+    def mostrar_inicio(self): pass
+    def mostrar_wifi(self, *a): pass
+    def mostrar_erro(self, *a): pass
+    def atualizar(self, *a): pass
+    def mostrar_debug(self, *a): pass
+
+
+disp = Display(i2c=i2c_bus) if USAR_OLED else _DisplayNulo()
 imu = IMU(freefall_g=FREEFALL_G, freefall_min_ms=FREEFALL_MIN_MS,
           impact_g=IMPACT_G, impact_janela_ms=IMPACT_JANELA_MS, i2c=i2c_bus)
 
@@ -68,10 +85,10 @@ _dbg_min = 99.0
 _dbg_max = 0.0
 _dbg_freefalls_ultimo = 0
 
-# Janela de media do ultrasonico (so alimenta o buzzer)
+# Distancia filtrada por mediana movel (atualiza a cada loop, sem lag de janela)
 dist = -1
-_buffer_amostras = []
-_inicio_janela = time.ticks_ms()
+_ultimas = []
+_ultimo_display = 0
 
 while True:
     agora = time.ticks_ms()
@@ -83,19 +100,18 @@ while True:
         vb.toggle_mute()
     _btn_c_anterior = btn_c_atual
 
-    # 1. Amostrar ultrasonico e fechar janela de media a cada JANELA_MEDIA_MS
+    # 1. Amostrar ultrasonico -> mediana movel de MEDIANA_N amostras.
+    #    Atualiza dist a cada loop (sem o lag de uma janela de tempo), mas a
+    #    mediana ainda rejeita os spikes ocasionais do HC-SR04.
     amostra = sensor.medir_cm()
-    if amostra >= 0:
-        _buffer_amostras.append(amostra)
-
-    if time.ticks_diff(agora, _inicio_janela) >= JANELA_MEDIA_MS:
-        if _buffer_amostras:
-            _buffer_amostras.sort()
-            dist = _buffer_amostras[len(_buffer_amostras) // 2]
-        else:
-            dist = -1
-        _buffer_amostras = []
-        _inicio_janela = agora
+    if amostra < 0:
+        _ultimas = []
+        dist = -1
+    else:
+        _ultimas.append(amostra)
+        if len(_ultimas) > MEDIANA_N:
+            _ultimas.pop(0)
+        dist = sorted(_ultimas)[len(_ultimas) // 2]
 
     # 2. Buzzer + motor vibratorio reagem a distancia (papel do ultrasonico)
     bz.beep_proximidade(dist, agora)
@@ -131,12 +147,15 @@ while True:
     else:
         fb.atualizar(dist)
 
-    # 5. Display OLED (debug ou modo normal)
-    if MODO_DEBUG:
-        disp.mostrar_debug(mag, _dbg_min, _dbg_max,
-                           imu.freefalls_detectados, imu._estado)
-    else:
-        disp.atualizar(dist, wifi.conectado, alerta_flag)
+    # 5. Display OLED — throttled. O show() via SoftI2C custa ~113ms; se rodar
+    #    todo loop trava buzzer/vibra/sensor. Atualiza a cada DISPLAY_INTERVALO_MS.
+    if time.ticks_diff(agora, _ultimo_display) >= DISPLAY_INTERVALO_MS:
+        _ultimo_display = agora
+        if MODO_DEBUG:
+            disp.mostrar_debug(mag, _dbg_min, _dbg_max,
+                               imu.freefalls_detectados, imu._estado)
+        else:
+            disp.atualizar(dist, wifi.conectado, alerta_flag)
 
     # Limpar flag visual apos 3s
     if alerta_flag and time.ticks_diff(agora, ultimo_alerta) > 3000:

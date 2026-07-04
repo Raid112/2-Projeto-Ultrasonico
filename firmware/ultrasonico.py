@@ -7,10 +7,11 @@ import time
 
 
 class Ultrasonico:
-    def __init__(self, trig_pin=8, echo_pin=9):
+    def __init__(self, trig_pin=8, echo_pin=9, echo_timeout_us=30000):
         self.trig = Pin(trig_pin, Pin.OUT)
         self.echo = Pin(echo_pin, Pin.IN)
         self.trig.value(0)
+        self.echo_timeout_us = echo_timeout_us
 
     def medir_cm(self):
         """Mede distancia em centimetros.
@@ -25,8 +26,8 @@ class Ultrasonico:
         time.sleep_us(10)
         self.trig.value(0)
 
-        # Medir duracao do echo (timeout 30ms ~ 500cm)
-        duracao = time_pulse_us(self.echo, 1, 30000)
+        # Medir duracao do echo (timeout configuravel)
+        duracao = time_pulse_us(self.echo, 1, self.echo_timeout_us)
 
         if duracao < 0:
             return -1  # timeout
