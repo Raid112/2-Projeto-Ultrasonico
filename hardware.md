@@ -1,11 +1,12 @@
-# Hardware — Projeto 2 (Sensor de Queda com Alerta WhatsApp)
+# Hardware — Projeto Final (Bengala Assistiva)
 
 **Plataforma:** BitDogLab V7 (RP2040) + ESP8266 + HC-SR04 + MPU6050
 **Lab de Sistemas Embarcados (FEEC/UNICAMP)**
 
-Funcionalidade: o HC-SR04 atua como sensor de ré sonoro (buzzer), o MPU6050
-detecta queda real (freefall + impacto) e dispara um alerta WhatsApp via ESP8266
-(CallMeBot). Feedback visual em NeoPixel + LED RGB; botão C muta o buzzer.
+Funcionalidade: o HC-SR04 detecta obstáculos à frente e comunica a proximidade
+por som (buzzer) e vibração (motor ERM); o MPU6050 detecta queda do usuário
+(freefall) e dispara um alerta WhatsApp via ESP8266 (CallMeBot). Feedback visual
+em NeoPixel + LED RGB; botão C muta buzzer e vibração.
 
 ---
 
