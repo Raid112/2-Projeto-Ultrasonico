@@ -7,6 +7,13 @@ import time
 
 
 class Buzzer:
+    # Mapeamento linear de frequencia (Hz) com a proximidade:
+    FREQ_LONGE = 400     # objeto no limite (dist_max) -> grave
+    FREQ_PERTO = 2500    # objeto colado -> agudo
+    # Cadencia (ms) linear: longe = bipe lento, perto = bipe rapido
+    INTERVALO_LONGE = 700
+    INTERVALO_PERTO = 60
+
     def __init__(self, pin=21, dist_max=30, dist_alerta=5):
         self.pwm = PWM(Pin(pin))
         self.pwm.duty_u16(0)
@@ -22,40 +29,37 @@ class Buzzer:
         return self.mute
 
     def beep_proximidade(self, distancia_cm, tempo_ms):
-        """Beep escalado por dist_max / dist_alerta (sensor de re).
-
-        d < dist_alerta          : beep continuo agudo
-        dist_alerta .. 1/3 max   : beep rapido
-        1/3 max   .. 2/3 max     : beep medio
-        2/3 max   .. dist_max    : beep lento
-        d > dist_max             : silencio
+        """Sensor de re LINEAR: frequencia e cadencia variam continuamente
+        com a distancia. Mais perto = mais agudo e bipes mais rapidos.
+        Abaixo de dist_alerta vira tom continuo. Acima de dist_max, silencio.
         """
         if self.mute or distancia_cm < 0 or distancia_cm > self.dist_max:
             self.parar()
             return
 
+        # proximidade linear: 0.0 (longe = dist_max) -> 1.0 (colado)
+        prox = (self.dist_max - distancia_cm) / self.dist_max
+        if prox < 0:
+            prox = 0.0
+        elif prox > 1:
+            prox = 1.0
+
+        # frequencia linear com a proximidade
+        freq = int(self.FREQ_LONGE + prox * (self.FREQ_PERTO - self.FREQ_LONGE))
+
+        # zona critica: tom continuo (sem cortar)
         if distancia_cm < self.dist_alerta:
-            self._tocar(2000)
+            self._tocar(freq)
             return
 
-        faixa = self.dist_max - self.dist_alerta
-        t1 = self.dist_alerta + faixa / 3
-        t2 = self.dist_alerta + 2 * faixa / 3
+        # cadencia linear: longe = lento, perto = rapido
+        intervalo = int(self.INTERVALO_LONGE -
+                        prox * (self.INTERVALO_LONGE - self.INTERVALO_PERTO))
 
-        if distancia_cm < t1:
-            intervalo = 100
-            freq = 1500
-        elif distancia_cm < t2:
-            intervalo = 300
-            freq = 1000
-        else:
-            intervalo = 600
-            freq = 800
-
-        # Alternar beep/silencio
         ciclo = time.ticks_diff(tempo_ms, self._ultimo_beep)
         if ciclo >= intervalo * 2:
             self._ultimo_beep = tempo_ms
+            ciclo = 0
 
         if ciclo < intervalo:
             self._tocar(freq)

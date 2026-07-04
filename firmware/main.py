@@ -13,6 +13,7 @@ from machine import Pin, SoftI2C
 from ultrasonico import Ultrasonico
 from wifi import WiFi
 from buzzer import Buzzer
+from vibra import Vibra
 from feedback import Feedback
 from display import Display
 from imu import IMU
@@ -30,6 +31,7 @@ i2c_bus = SoftI2C(scl=Pin(3), sda=Pin(2), freq=100000)
 sensor = Ultrasonico()
 wifi = WiFi()
 bz = Buzzer(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
+vb = Vibra(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
 fb = Feedback(dist_max=DISTANCIA_MAX_CM, dist_alerta=DISTANCIA_ALERTA_CM)
 disp = Display(i2c=i2c_bus)
 imu = IMU(freefall_g=FREEFALL_G, freefall_min_ms=FREEFALL_MIN_MS,
@@ -74,10 +76,11 @@ _inicio_janela = time.ticks_ms()
 while True:
     agora = time.ticks_ms()
 
-    # 0. Botao C: toggle mute do buzzer
+    # 0. Botao C: toggle mute do buzzer + vibracao
     btn_c_atual = btn_c.value()
     if _btn_c_anterior == 1 and btn_c_atual == 0:
         bz.toggle_mute()
+        vb.toggle_mute()
     _btn_c_anterior = btn_c_atual
 
     # 1. Amostrar ultrasonico e fechar janela de media a cada JANELA_MEDIA_MS
@@ -94,8 +97,9 @@ while True:
         _buffer_amostras = []
         _inicio_janela = agora
 
-    # 2. Buzzer reage a distancia (unico papel do ultrasonico)
+    # 2. Buzzer + motor vibratorio reagem a distancia (papel do ultrasonico)
     bz.beep_proximidade(dist, agora)
+    vb.vibrar_proximidade(dist, agora)
 
     # 3. IMU: detectar queda (roda a cada iteracao, ~50ms)
     queda = imu.atualizar_detector(agora)
@@ -113,6 +117,7 @@ while True:
                 ultimo_alerta = agora
                 alerta_flag = True
                 bz.beep_curto(2500, 200)
+                vb.pulso_curto(200)
 
     # 3b. Modo debug: resetar janela de min/max periodicamente
     if MODO_DEBUG and time.ticks_diff(agora, _dbg_inicio) >= DEBUG_RESET_MIN_MAX_SEG * 1000:

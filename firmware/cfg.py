@@ -23,7 +23,7 @@ DISTANCIA_MAX_CM = 30        # distancia maxima considerada (acima disso = sem o
 DISTANCIA_ALERTA_CM = 5      # distancia critica (so afeta o buzzer)
 
 COOLDOWN_ALERTA_SEG = 10     # tempo minimo entre alertas WhatsApp (CallMeBot ~1 msg / 10s)
-JANELA_MEDIA_MS = 3000       # janela de tempo para media da distancia
+JANELA_MEDIA_MS = 300        # janela de tempo para media da distancia (menor = mais responsivo)
 
 # Deteccao de queda (MPU6050)
 # Algoritmo: queda livre (accel baixo) seguida de impacto (accel alto) dentro de uma janela.
