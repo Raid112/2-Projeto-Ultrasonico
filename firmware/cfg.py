@@ -1,5 +1,5 @@
 # config.py — Configuracoes do projeto
-# Projeto 2 - Lab de Sistemas Embarcados (FEEC/UNICAMP)
+# Projeto Final - Bengala Assistiva - Lab de Sistemas Embarcados (FEEC/UNICAMP)
 #
 # IMPORTANTE: Edite os valores abaixo antes de usar!
 

@@ -1,12 +1,12 @@
 # main.py — Loop principal
-# Projeto 2 - Lab de Sistemas Embarcados (FEEC/UNICAMP)
+# Projeto Final - Bengala Assistiva - Lab de Sistemas Embarcados (FEEC/UNICAMP)
 # Plataforma: BitDogLab V7 (RP2040) + ESP8266 + HC-SR04 + MPU6050
 #
-# Funcionalidade:
-#   - HC-SR04 controla APENAS o buzzer (sensor de re sonoro)
-#   - MPU6050 detecta queda real (freefall + impacto) -> envia WhatsApp
-#   - Feedback visual (NeoPixel + LED RGB) reflete estado de queda
-#   - Botao C muta/desmuta o buzzer
+# Funcionalidade (bengala assistiva):
+#   - HC-SR04 detecta obstaculo a frente -> buzzer + motor vibratorio proporcionais
+#   - MPU6050 detecta queda do usuario (freefall) -> envia alerta WhatsApp
+#   - Feedback visual (NeoPixel + LED RGB) reflete a proximidade / estado de alerta
+#   - Botao C muta/desmuta o buzzer e a vibracao
 
 import time
 from machine import Pin, SoftI2C

@@ -1,5 +1,5 @@
 # vibra.py — Motor vibratorio (ERM) proporcional a distancia
-# Projeto 2 - Lab de Sistemas Embarcados (FEEC/UNICAMP)
+# Projeto Final - Bengala Assistiva - Lab de Sistemas Embarcados (FEEC/UNICAMP)
 # Plataforma: BitDogLab V7 (RP2040)
 #
 # Canal haptico analogo ao buzzer: quanto mais perto, mais forte e mais

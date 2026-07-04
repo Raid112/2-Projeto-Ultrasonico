@@ -1,5 +1,5 @@
 # display.py — Painel OLED para o Projeto Ultrasonico
-# Projeto 2 - Lab de Sistemas Embarcados (FEEC/UNICAMP)
+# Projeto Final - Bengala Assistiva - Lab de Sistemas Embarcados (FEEC/UNICAMP)
 # Plataforma: BitDogLab V7 (RP2040)
 
 from machine import Pin, SoftI2C
